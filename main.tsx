@@ -1,6 +1,9 @@
 import axios from 'axios';
 import * as FormData from 'form-data';
 
+import { wrapper } from 'axios-cookiejar-support';
+import { CookieJar } from 'tough-cookie';
+
 // Define the products URL
 const productsUrl = 'https://telfar.net/products.json';
 
@@ -26,69 +29,87 @@ async function monitorProduct() {
     // Fetch the product data
     const productResponse = await axios.get(productUrl);
     const productData = productResponse.data;
+    const isAvailable = productResponse.data.available && productResponse.data.variants[0].available
 
-    const isAvailable = productResponse.data.available
-
-    // Check if the product is in stock
+    // Check if the main product is in stock and also first variant as we are only taking that under consideration for now (testing purpose)
     if (isAvailable) {
       console.log("..Stock is Available..");
       console.log("Adding to cart as it is available in stock...");
       // adding only first variant for product awaiting reply from joe
-      const first_variant = productData.variants[0].id
+      const firstVariant = productData.variants[0].id
+      const quantityOrdered = 1
       // Add the product to the cart
-      console.log("Adding only first variant with quantity 1 : "+`${first_variant}`)
-      const cartAddResponse = await axios.post(cartAddUrl, {
-        id: first_variant,
+      console.log("Adding only first variant with quantity 1 : "+`${firstVariant}`)
+
+      
+      const jar = new CookieJar();
+      const client = wrapper(axios.create({ jar }));
+
+      const url = `https://telfar.net/cart/${firstVariant}:${quantityOrdered}`
+      const {config} = await client.get(url);
+
+      let cookies = {};
+      config.jar.toJSON().cookies.forEach((cookie) => {
+        cookies[cookie.key] = cookie.value || '';
+      });
+      const cookieString = Object.entries(cookies)
+      .map(([key, value]) => `${key}=${value || ''}`)
+      .join('; ');
+
+
+
+      const cartAddResponse = await client.post(cartAddUrl, {
+        id: firstVariant,
         quantity: 1
       });
+      const cookies_add = cartAddResponse.headers['set-cookie']
+      const cookieMap = cookies_add.reduce((map, cookie) => {
+        const [key, value] = cookie.split('=');
+        map[key.trim()] = decodeURIComponent(value);
+        return map;
+      }, {});
+      
+      const cart_ts = cookieMap['cart_ts'].split(';')[0]
+      const cart_ver = cookieMap['cart_ver'].split(';')[0]
+      const cartKey = cookieMap['cart'].split(';')[0]
 
+      const currentTimestamp = Math.floor(Date.now() / 1000);
       if (cartAddResponse.status===200) {
         console.log("Adding to cart as it is available in stock...");
       }
-      
+      var cookieString1 = `_checkout_queue_checkout_token=${cookies['_checkout_queue_checkout_token']}; _checkout_queue_token=${cookies['_checkout_queue_token']}; _cmp_a=${cookies['_cmp_a']}; _landing_page=${cookies['_landing_page']}; _orig_referrer=${cookies['_orig_referrer']}; _s=${cookies['_s']}; _secure_session_id=${cookies['_secure_session_id']}; _shopify_m=${cookies['_shopify_m']}; _shopify_s=${cookies['_shopify_s']}; _shopify_tm=${cookies['_shopify_tm']}; _shopify_tw=${cookies['_shopify_tw']}; _shopify_y=${cookies['_shopify_y']}; _tracking_consent=${cookies['_tracking_consent']}; _y=${cookies['_y']}; cart=${cartKey}; cart_currency=${cookies['cart_currency']}; cart_sig=${cookies['cart_sig']}; cart_ts=${cart_ts}; cart_ver=${cart_ver}; localization=${cookies['localization']}; secure_customer_sig=${cookies['secure_customer_sig']};`
+      jar.setCookie(cookieString1, 'https://telfar.net');
+
       var formData = new FormData();
       formData.append('updates', '1');
       formData.append('checkout', '');
+      
       // Note : adding User-Agent, Cookie, Cache-Control is critical as we need to respect robot.txt and we are posing to be real user and not some bot trying to fetch all details.
-      const cartResponse = await axios.post(cartUrl, formData, {
+      const cartResponse = await client.post(cartUrl, formData, {
         headers: {...formData.getHeaders(),
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0',
-        'Cookie': '_checkout_queue_checkout_token=eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaEpJaVZoTURCaE9EQTRaakF6TWpFM09ETm1ZMkkyWlRrek9EVTNZbVExWWpCa05nWTZCa1ZVIiwiZXhwIjoiMjAyMy0xMC0wMlQyMjoyNDoyNi4yNzlaIiwicHVyIjoiY29va2llLl9jaGVja291dF9xdWV1ZV9jaGVja291dF90b2tlbiJ9fQ%3D%3D--90d4bef8f4b423877ce44aec881eac64bae6dc78; _checkout_queue_token=AnWPJ7JR2qrY-Rf3MXGfgXAyAeZTQnBf8F5YutIH5ryarA5wfepEqJpHJ6tV4_fKKK8f13LMpLERT-RapNuj8XZyCuMBJyayxWLyjUgC_TmKOYxmgxZVqUjnBMMisKP7qO9U-sumF7900Ufcm_BRPlvJf3NHF11m-XW_oX-pm9JqmfnbMNWAHkH3; _cmp_a=%7B%22purposes%22%3A%7B%22a%22%3Atrue%2C%22p%22%3Atrue%2C%22m%22%3Atrue%2C%22t%22%3Atrue%7D%2C%22display_banner%22%3Afalse%2C%22merchant_geo%22%3A%22USNY%22%2C%22sale_of_data_region%22%3Afalse%7D; _landing_page=%2F8807204%2Fcheckouts%2Fa00a808f0321783fcb6e93857bd5b0d6; _orig_referrer=https%3A%2F%2Ftelfar.net%2Fcheckout.js; _s=bc11fd53-9726-4699-a282-209fd3181bb5; _secure_session_id=9a693edee6de472298a585a29c87c266; _shopify_m=session; _shopify_s=bc11fd53-9726-4699-a282-209fd3181bb5; _shopify_tm=; _shopify_tw=; _shopify_y=0468fb4b-db92-4035-aaba-63ba9225018b; _tracking_consent=%7B%22con%22%3A%7B%22CMP%22%3A%7B%22a%22%3A%22%22%2C%22s%22%3A%22%22%2C%22p%22%3A%22%22%2C%22m%22%3A%22%22%7D%7D%2C%22lim%22%3A%5B%22CCPA%22%2C%22GDPR%22%5D%2C%22region%22%3A%22CAON%22%2C%22reg%22%3A%22%22%2C%22v%22%3A%222.1%22%7D; _y=0468fb4b-db92-4035-aaba-63ba9225018b; cart=1f8be951af1ed62bda076efe11106e34; cart_currency=USD; cart_sig=b06cedb24e46c0a9662a57a213a09880; cart_ts=1696281866; cart_ver=gcp-us-east1%3A43; localization=US; secure_customer_sig=; unique_interaction_id=385688f7-d78c-4636-8585-4315fb1f3fde', // replace with your actual cookie value
         'Cache-Control': 'no-cache',
       }
       });
-
       let html: string = cartResponse.data;
-      let match = html.match(/checkouts\/(.*?)\?/);
-      let token: string | null = match && match[1];
+
+      let regex = /var DF_CHECKOUT_TOKEN = "(.*?)";/g;
+      let match = regex.exec(html);
+      let token = '';
+      if (match) {
+          token = match[1];
+
+      } else {
+          console.log("Token not found");
+      }
+
       const newCheckoutUrl = checkoutUrl + token
+      // can also be found in response headers['tracked_start_checkout']
       //output requested for the evaluation
       //the output you were looking for
-      console.log("Checkout URL before redirect: " + newCheckoutUrl);
-      
+      console.log("Checkout URL : " + newCheckoutUrl);
 
-      const callNewAPI = await axios.get(newCheckoutUrl, { 
-        maxRedirects: 10,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0',
-          'Cookie': '_checkout_queue_checkout_token=eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaEpJaVZoTURCaE9EQTRaakF6TWpFM09ETm1ZMkkyWlRrek9EVTNZbVExWWpCa05nWTZCa1ZVIiwiZXhwIjoiMjAyMy0xMC0wMlQyMjoyNDoyNi4yNzlaIiwicHVyIjoiY29va2llLl9jaGVja291dF9xdWV1ZV9jaGVja291dF90b2tlbiJ9fQ%3D%3D--90d4bef8f4b423877ce44aec881eac64bae6dc78; _checkout_queue_token=AnWPJ7JR2qrY-Rf3MXGfgXAyAeZTQnBf8F5YutIH5ryarA5wfepEqJpHJ6tV4_fKKK8f13LMpLERT-RapNuj8XZyCuMBJyayxWLyjUgC_TmKOYxmgxZVqUjnBMMisKP7qO9U-sumF7900Ufcm_BRPlvJf3NHF11m-XW_oX-pm9JqmfnbMNWAHkH3; _cmp_a=%7B%22purposes%22%3A%7B%22a%22%3Atrue%2C%22p%22%3Atrue%2C%22m%22%3Atrue%2C%22t%22%3Atrue%7D%2C%22display_banner%22%3Afalse%2C%22merchant_geo%22%3A%22USNY%22%2C%22sale_of_data_region%22%3Afalse%7D; _landing_page=%2F8807204%2Fcheckouts%2Fa00a808f0321783fcb6e93857bd5b0d6; _orig_referrer=https%3A%2F%2Ftelfar.net%2Fcheckout.js; _s=bc11fd53-9726-4699-a282-209fd3181bb5; _secure_session_id=9a693edee6de472298a585a29c87c266; _shopify_m=session; _shopify_s=bc11fd53-9726-4699-a282-209fd3181bb5; _shopify_tm=; _shopify_tw=; _shopify_y=0468fb4b-db92-4035-aaba-63ba9225018b; _tracking_consent=%7B%22con%22%3A%7B%22CMP%22%3A%7B%22a%22%3A%22%22%2C%22s%22%3A%22%22%2C%22p%22%3A%22%22%2C%22m%22%3A%22%22%7D%7D%2C%22lim%22%3A%5B%22CCPA%22%2C%22GDPR%22%5D%2C%22region%22%3A%22CAON%22%2C%22reg%22%3A%22%22%2C%22v%22%3A%222.1%22%7D; _y=0468fb4b-db92-4035-aaba-63ba9225018b; cart=1f8be951af1ed62bda076efe11106e34; cart_currency=USD; cart_sig=b06cedb24e46c0a9662a57a213a09880; cart_ts=1696281866; cart_ver=gcp-us-east1%3A43; localization=US; secure_customer_sig=; unique_interaction_id=385688f7-d78c-4636-8585-4315fb1f3fde', // replace with your actual cookie value
-        'Cache-Control': 'no-cache',
-        }
-      }
-      ).then((res)=>{
-        // console.log(res.status)
-        // //usually res.header will have location that will have answer for our redirect
-        // console.log(res.headers)
-        // //or we use below to get the redirect url
-        // console.log(res.request.res.responseUrl)
-        // console.log(res.request.res.responseURL)
-      }).catch((error) => {
-        if (error.response.status === 302 || error.response.status === 301) {
-          const redirectUrl = error.response.request.res.responseUrl;
-          console.log("Redirect URL: " + redirectUrl);
-        }
-        
-      });
+
 
     }
      else {

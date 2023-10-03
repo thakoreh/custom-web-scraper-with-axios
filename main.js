@@ -49,6 +49,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var axios_1 = require("axios");
 var FormData = require("form-data");
+var axios_cookiejar_support_1 = require("axios-cookiejar-support");
+var tough_cookie_1 = require("tough-cookie");
 // Define the products URL
 var productsUrl = 'https://telfar.net/products.json';
 // we can choose to have loop over productsUrl and add all products' variants in cart and generate checkout, awaiting your response on this.
@@ -65,7 +67,7 @@ var checkoutUrl = 'https://telfar.net/8807204/checkouts/';
 //we can include argument here for product so we can call the function, best case is we include in products loop
 function monitorProduct() {
     return __awaiter(this, void 0, void 0, function () {
-        var productResponse, productData, isAvailable, first_variant, cartAddResponse, formData, cartResponse, html, match, token, newCheckoutUrl, callNewAPI, error_1;
+        var productResponse, productData, isAvailable, firstVariant, quantityOrdered, jar, client, url, config, cookies_1, cookieString, cartAddResponse, cookies_add, cookieMap, cart_ts, cart_ver, cartKey, currentTimestamp, cookieString1, formData, cartResponse, html, regex, match, token, newCheckoutUrl, error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -74,59 +76,74 @@ function monitorProduct() {
                 case 1:
                     productResponse = _a.sent();
                     productData = productResponse.data;
-                    isAvailable = productResponse.data.available;
+                    isAvailable = productResponse.data.available && productResponse.data.variants[0].available;
                     if (!isAvailable) return [3 /*break*/, 5];
                     console.log("..Stock is Available..");
                     console.log("Adding to cart as it is available in stock...");
-                    first_variant = productData.variants[0].id;
+                    firstVariant = productData.variants[0].id;
+                    quantityOrdered = 1;
                     // Add the product to the cart
-                    console.log("Adding only first variant with quantity 1 : " + "".concat(first_variant));
-                    return [4 /*yield*/, axios_1.default.post(cartAddUrl, {
-                            id: first_variant,
+                    console.log("Adding only first variant with quantity 1 : " + "".concat(firstVariant));
+                    jar = new tough_cookie_1.CookieJar();
+                    client = (0, axios_cookiejar_support_1.wrapper)(axios_1.default.create({ jar: jar }));
+                    url = "https://telfar.net/cart/".concat(firstVariant, ":").concat(quantityOrdered);
+                    return [4 /*yield*/, client.get(url)];
+                case 2:
+                    config = (_a.sent()).config;
+                    cookies_1 = {};
+                    config.jar.toJSON().cookies.forEach(function (cookie) {
+                        cookies_1[cookie.key] = cookie.value || '';
+                    });
+                    cookieString = Object.entries(cookies_1)
+                        .map(function (_a) {
+                        var key = _a[0], value = _a[1];
+                        return "".concat(key, "=").concat(value || '');
+                    })
+                        .join('; ');
+                    return [4 /*yield*/, client.post(cartAddUrl, {
+                            id: firstVariant,
                             quantity: 1
                         })];
-                case 2:
+                case 3:
                     cartAddResponse = _a.sent();
+                    cookies_add = cartAddResponse.headers['set-cookie'];
+                    cookieMap = cookies_add.reduce(function (map, cookie) {
+                        var _a = cookie.split('='), key = _a[0], value = _a[1];
+                        map[key.trim()] = decodeURIComponent(value);
+                        return map;
+                    }, {});
+                    cart_ts = cookieMap['cart_ts'].split(';')[0];
+                    cart_ver = cookieMap['cart_ver'].split(';')[0];
+                    cartKey = cookieMap['cart'].split(';')[0];
+                    currentTimestamp = Math.floor(Date.now() / 1000);
                     if (cartAddResponse.status === 200) {
                         console.log("Adding to cart as it is available in stock...");
                     }
+                    cookieString1 = "_checkout_queue_checkout_token=".concat(cookies_1['_checkout_queue_checkout_token'], "; _checkout_queue_token=").concat(cookies_1['_checkout_queue_token'], "; _cmp_a=").concat(cookies_1['_cmp_a'], "; _landing_page=").concat(cookies_1['_landing_page'], "; _orig_referrer=").concat(cookies_1['_orig_referrer'], "; _s=").concat(cookies_1['_s'], "; _secure_session_id=").concat(cookies_1['_secure_session_id'], "; _shopify_m=").concat(cookies_1['_shopify_m'], "; _shopify_s=").concat(cookies_1['_shopify_s'], "; _shopify_tm=").concat(cookies_1['_shopify_tm'], "; _shopify_tw=").concat(cookies_1['_shopify_tw'], "; _shopify_y=").concat(cookies_1['_shopify_y'], "; _tracking_consent=").concat(cookies_1['_tracking_consent'], "; _y=").concat(cookies_1['_y'], "; cart=").concat(cartKey, "; cart_currency=").concat(cookies_1['cart_currency'], "; cart_sig=").concat(cookies_1['cart_sig'], "; cart_ts=").concat(cart_ts, "; cart_ver=").concat(cart_ver, "; localization=").concat(cookies_1['localization'], "; secure_customer_sig=").concat(cookies_1['secure_customer_sig'], ";");
+                    jar.setCookie(cookieString1, 'https://telfar.net');
                     formData = new FormData();
                     formData.append('updates', '1');
                     formData.append('checkout', '');
-                    return [4 /*yield*/, axios_1.default.post(cartUrl, formData, {
-                            headers: __assign(__assign({}, formData.getHeaders()), { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0', 'Cookie': '_checkout_queue_checkout_token=eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaEpJaVZoTURCaE9EQTRaakF6TWpFM09ETm1ZMkkyWlRrek9EVTNZbVExWWpCa05nWTZCa1ZVIiwiZXhwIjoiMjAyMy0xMC0wMlQyMjoyNDoyNi4yNzlaIiwicHVyIjoiY29va2llLl9jaGVja291dF9xdWV1ZV9jaGVja291dF90b2tlbiJ9fQ%3D%3D--90d4bef8f4b423877ce44aec881eac64bae6dc78; _checkout_queue_token=AnWPJ7JR2qrY-Rf3MXGfgXAyAeZTQnBf8F5YutIH5ryarA5wfepEqJpHJ6tV4_fKKK8f13LMpLERT-RapNuj8XZyCuMBJyayxWLyjUgC_TmKOYxmgxZVqUjnBMMisKP7qO9U-sumF7900Ufcm_BRPlvJf3NHF11m-XW_oX-pm9JqmfnbMNWAHkH3; _cmp_a=%7B%22purposes%22%3A%7B%22a%22%3Atrue%2C%22p%22%3Atrue%2C%22m%22%3Atrue%2C%22t%22%3Atrue%7D%2C%22display_banner%22%3Afalse%2C%22merchant_geo%22%3A%22USNY%22%2C%22sale_of_data_region%22%3Afalse%7D; _landing_page=%2F8807204%2Fcheckouts%2Fa00a808f0321783fcb6e93857bd5b0d6; _orig_referrer=https%3A%2F%2Ftelfar.net%2Fcheckout.js; _s=bc11fd53-9726-4699-a282-209fd3181bb5; _secure_session_id=9a693edee6de472298a585a29c87c266; _shopify_m=session; _shopify_s=bc11fd53-9726-4699-a282-209fd3181bb5; _shopify_tm=; _shopify_tw=; _shopify_y=0468fb4b-db92-4035-aaba-63ba9225018b; _tracking_consent=%7B%22con%22%3A%7B%22CMP%22%3A%7B%22a%22%3A%22%22%2C%22s%22%3A%22%22%2C%22p%22%3A%22%22%2C%22m%22%3A%22%22%7D%7D%2C%22lim%22%3A%5B%22CCPA%22%2C%22GDPR%22%5D%2C%22region%22%3A%22CAON%22%2C%22reg%22%3A%22%22%2C%22v%22%3A%222.1%22%7D; _y=0468fb4b-db92-4035-aaba-63ba9225018b; cart=1f8be951af1ed62bda076efe11106e34; cart_currency=USD; cart_sig=b06cedb24e46c0a9662a57a213a09880; cart_ts=1696281866; cart_ver=gcp-us-east1%3A43; localization=US; secure_customer_sig=; unique_interaction_id=385688f7-d78c-4636-8585-4315fb1f3fde', 'Cache-Control': 'no-cache' })
-                        })];
-                case 3:
-                    cartResponse = _a.sent();
-                    html = cartResponse.data;
-                    match = html.match(/checkouts\/(.*?)\?/);
-                    token = match && match[1];
-                    newCheckoutUrl = checkoutUrl + token;
-                    //output requested for the evaluation
-                    //the output you were looking for
-                    console.log("Checkout URL before redirect: " + newCheckoutUrl);
-                    return [4 /*yield*/, axios_1.default.get(newCheckoutUrl, {
-                            maxRedirects: 10,
-                            headers: {
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0',
-                                'Cookie': '_checkout_queue_checkout_token=eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaEpJaVZoTURCaE9EQTRaakF6TWpFM09ETm1ZMkkyWlRrek9EVTNZbVExWWpCa05nWTZCa1ZVIiwiZXhwIjoiMjAyMy0xMC0wMlQyMjoyNDoyNi4yNzlaIiwicHVyIjoiY29va2llLl9jaGVja291dF9xdWV1ZV9jaGVja291dF90b2tlbiJ9fQ%3D%3D--90d4bef8f4b423877ce44aec881eac64bae6dc78; _checkout_queue_token=AnWPJ7JR2qrY-Rf3MXGfgXAyAeZTQnBf8F5YutIH5ryarA5wfepEqJpHJ6tV4_fKKK8f13LMpLERT-RapNuj8XZyCuMBJyayxWLyjUgC_TmKOYxmgxZVqUjnBMMisKP7qO9U-sumF7900Ufcm_BRPlvJf3NHF11m-XW_oX-pm9JqmfnbMNWAHkH3; _cmp_a=%7B%22purposes%22%3A%7B%22a%22%3Atrue%2C%22p%22%3Atrue%2C%22m%22%3Atrue%2C%22t%22%3Atrue%7D%2C%22display_banner%22%3Afalse%2C%22merchant_geo%22%3A%22USNY%22%2C%22sale_of_data_region%22%3Afalse%7D; _landing_page=%2F8807204%2Fcheckouts%2Fa00a808f0321783fcb6e93857bd5b0d6; _orig_referrer=https%3A%2F%2Ftelfar.net%2Fcheckout.js; _s=bc11fd53-9726-4699-a282-209fd3181bb5; _secure_session_id=9a693edee6de472298a585a29c87c266; _shopify_m=session; _shopify_s=bc11fd53-9726-4699-a282-209fd3181bb5; _shopify_tm=; _shopify_tw=; _shopify_y=0468fb4b-db92-4035-aaba-63ba9225018b; _tracking_consent=%7B%22con%22%3A%7B%22CMP%22%3A%7B%22a%22%3A%22%22%2C%22s%22%3A%22%22%2C%22p%22%3A%22%22%2C%22m%22%3A%22%22%7D%7D%2C%22lim%22%3A%5B%22CCPA%22%2C%22GDPR%22%5D%2C%22region%22%3A%22CAON%22%2C%22reg%22%3A%22%22%2C%22v%22%3A%222.1%22%7D; _y=0468fb4b-db92-4035-aaba-63ba9225018b; cart=1f8be951af1ed62bda076efe11106e34; cart_currency=USD; cart_sig=b06cedb24e46c0a9662a57a213a09880; cart_ts=1696281866; cart_ver=gcp-us-east1%3A43; localization=US; secure_customer_sig=; unique_interaction_id=385688f7-d78c-4636-8585-4315fb1f3fde',
-                                'Cache-Control': 'no-cache',
-                            }
-                        }).then(function (res) {
-                            // console.log(res.status)
-                            // //usually res.header will have location that will have answer for our redirect
-                            // console.log(res.headers)
-                            // //or we use below to get the redirect url
-                            // console.log(res.request.res.responseUrl)
-                            // console.log(res.request.res.responseURL)
-                        }).catch(function (error) {
-                            if (error.response.status === 302 || error.response.status === 301) {
-                                var redirectUrl = error.response.request.res.responseUrl;
-                                console.log("Redirect URL: " + redirectUrl);
-                            }
+                    return [4 /*yield*/, client.post(cartUrl, formData, {
+                            headers: __assign(__assign({}, formData.getHeaders()), { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0', 'Cache-Control': 'no-cache' })
                         })];
                 case 4:
-                    callNewAPI = _a.sent();
+                    cartResponse = _a.sent();
+                    html = cartResponse.data;
+                    regex = /var DF_CHECKOUT_TOKEN = "(.*?)";/g;
+                    match = regex.exec(html);
+                    token = '';
+                    if (match) {
+                        token = match[1];
+                    }
+                    else {
+                        console.log("Token not found");
+                    }
+                    newCheckoutUrl = checkoutUrl + token;
+                    // can also be found in response headers['tracked_start_checkout']
+                    //output requested for the evaluation
+                    //the output you were looking for
+                    console.log("Checkout URL : " + newCheckoutUrl);
                     return [3 /*break*/, 6];
                 case 5:
                     console.log('Product is out of stock');
