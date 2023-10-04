@@ -1,6 +1,6 @@
 import axios from 'axios';
 import * as FormData from 'form-data';
-
+// Import necessary modules for handling cookies
 import { wrapper } from 'axios-cookiejar-support';
 import { CookieJar } from 'tough-cookie';
 
@@ -35,13 +35,13 @@ async function monitorProduct() {
     if (isAvailable) {
       console.log("..Stock is Available..");
       console.log("Adding to cart as it is available in stock...");
-      // adding only first variant for product awaiting reply from joe
+      // Get the ID of the first variant and set the quantity to 1
       const firstVariant = productData.variants[0].id
       const quantityOrdered = 1
-      // Add the product to the cart
+      
       console.log("Adding only first variant with quantity 1 : "+`${firstVariant}`)
 
-      
+      // Create a cookie jar and a client with cookie support
       const jar = new CookieJar();
       const client = wrapper(axios.create({ jar }));
 
@@ -57,10 +57,10 @@ async function monitorProduct() {
       .join('; ');
 
 
-
+      // Add the product to the cart
       const cartAddResponse = await client.post(cartAddUrl, {
         id: firstVariant,
-        quantity: 1
+        quantity: quantityOrdered
       });
       const cartHeaders = cartAddResponse.headers
       const shop_id = cartHeaders['x-shopid']
@@ -80,21 +80,25 @@ async function monitorProduct() {
         console.log("Adding to cart as it is available in stock...");
       }
       var cookieString1 = `_checkout_queue_checkout_token=${cookies['_checkout_queue_checkout_token']}; _checkout_queue_token=${cookies['_checkout_queue_token']}; _cmp_a=${cookies['_cmp_a']}; _landing_page=${cookies['_landing_page']}; _orig_referrer=${cookies['_orig_referrer']}; _s=${cookies['_s']}; _secure_session_id=${cookies['_secure_session_id']}; _shopify_m=${cookies['_shopify_m']}; _shopify_s=${cookies['_shopify_s']}; _shopify_tm=${cookies['_shopify_tm']}; _shopify_tw=${cookies['_shopify_tw']}; _shopify_y=${cookies['_shopify_y']}; _tracking_consent=${cookies['_tracking_consent']}; _y=${cookies['_y']}; cart=${cartKey}; cart_currency=${cookies['cart_currency']}; cart_sig=${cookies['cart_sig']}; cart_ts=${cart_ts}; cart_ver=${cart_ver}; localization=${cookies['localization']}; secure_customer_sig=${cookies['secure_customer_sig']};`
+      // Add the cookies to the cookie jar
       jar.setCookie(cookieString1, 'https://telfar.net');
 
+      // Create a FormData object for the cart request
       var formData = new FormData();
       formData.append('updates', '1');
       formData.append('checkout', '');
       
       // Note : adding User-Agent, Cookie, Cache-Control is critical as we need to respect robot.txt and we are posing to be real user and not some bot trying to fetch all details.
+      // Make a POST request to the cart URL with the necessary headers
       const cartResponse = await client.post(cartUrl, formData, {
         headers: {...formData.getHeaders(),
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0',
         'Cache-Control': 'no-cache',
       }
       });
+      // Get the HTML response from the cart request
       let html: string = cartResponse.data;
-
+      // Extract the checkout token from the HTML response
       let regex = /var DF_CHECKOUT_TOKEN = "(.*?)";/g;
       let match = regex.exec(html);
       let token = '';
@@ -104,11 +108,9 @@ async function monitorProduct() {
       } else {
           console.log("Token not found");
       }
-
+      // Construct the checkout URL using the shop ID and checkout token
       const newCheckoutUrl = hostsite +`/${shop_id}/checkouts/` + token
-      // can also be found in response headers['tracked_start_checkout']
-      //output requested for the evaluation
-      //the output you were looking for
+      // Output the checkout URL
       console.log("Checkout URL : " + newCheckoutUrl);
 
 

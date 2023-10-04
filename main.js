@@ -49,6 +49,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var axios_1 = require("axios");
 var FormData = require("form-data");
+// Import necessary modules for handling cookies
 var axios_cookiejar_support_1 = require("axios-cookiejar-support");
 var tough_cookie_1 = require("tough-cookie");
 // Define the products URL
@@ -82,7 +83,6 @@ function monitorProduct() {
                     console.log("Adding to cart as it is available in stock...");
                     firstVariant = productData.variants[0].id;
                     quantityOrdered = 1;
-                    // Add the product to the cart
                     console.log("Adding only first variant with quantity 1 : " + "".concat(firstVariant));
                     jar = new tough_cookie_1.CookieJar();
                     client = (0, axios_cookiejar_support_1.wrapper)(axios_1.default.create({ jar: jar }));
@@ -102,7 +102,7 @@ function monitorProduct() {
                         .join('; ');
                     return [4 /*yield*/, client.post(cartAddUrl, {
                             id: firstVariant,
-                            quantity: 1
+                            quantity: quantityOrdered
                         })];
                 case 3:
                     cartAddResponse = _a.sent();
@@ -122,6 +122,7 @@ function monitorProduct() {
                         console.log("Adding to cart as it is available in stock...");
                     }
                     cookieString1 = "_checkout_queue_checkout_token=".concat(cookies_1['_checkout_queue_checkout_token'], "; _checkout_queue_token=").concat(cookies_1['_checkout_queue_token'], "; _cmp_a=").concat(cookies_1['_cmp_a'], "; _landing_page=").concat(cookies_1['_landing_page'], "; _orig_referrer=").concat(cookies_1['_orig_referrer'], "; _s=").concat(cookies_1['_s'], "; _secure_session_id=").concat(cookies_1['_secure_session_id'], "; _shopify_m=").concat(cookies_1['_shopify_m'], "; _shopify_s=").concat(cookies_1['_shopify_s'], "; _shopify_tm=").concat(cookies_1['_shopify_tm'], "; _shopify_tw=").concat(cookies_1['_shopify_tw'], "; _shopify_y=").concat(cookies_1['_shopify_y'], "; _tracking_consent=").concat(cookies_1['_tracking_consent'], "; _y=").concat(cookies_1['_y'], "; cart=").concat(cartKey, "; cart_currency=").concat(cookies_1['cart_currency'], "; cart_sig=").concat(cookies_1['cart_sig'], "; cart_ts=").concat(cart_ts, "; cart_ver=").concat(cart_ver, "; localization=").concat(cookies_1['localization'], "; secure_customer_sig=").concat(cookies_1['secure_customer_sig'], ";");
+                    // Add the cookies to the cookie jar
                     jar.setCookie(cookieString1, 'https://telfar.net');
                     formData = new FormData();
                     formData.append('updates', '1');
@@ -142,9 +143,7 @@ function monitorProduct() {
                         console.log("Token not found");
                     }
                     newCheckoutUrl = hostsite + "/".concat(shop_id, "/checkouts/") + token;
-                    // can also be found in response headers['tracked_start_checkout']
-                    //output requested for the evaluation
-                    //the output you were looking for
+                    // Output the checkout URL
                     console.log("Checkout URL : " + newCheckoutUrl);
                     return [3 /*break*/, 6];
                 case 5:
