@@ -20,7 +20,7 @@ const cartAddUrl = 'https://telfar.net/cart/add.js';
 const cartUrl = 'https://telfar.net/cart.js';
 
 // Define the checkout URL
-const checkoutUrl = 'https://telfar.net/8807204/checkouts/';
+const hostsite = 'https://telfar.net';
 
 // Function to monitor the product
 //we can include argument here for product so we can call the function, best case is we include in products loop
@@ -62,7 +62,9 @@ async function monitorProduct() {
         id: firstVariant,
         quantity: 1
       });
-      const cookies_add = cartAddResponse.headers['set-cookie']
+      const cartHeaders = cartAddResponse.headers
+      const shop_id = cartHeaders['x-shopid']
+      const cookies_add = cartHeaders['set-cookie']
       const cookieMap = cookies_add.reduce((map, cookie) => {
         const [key, value] = cookie.split('=');
         map[key.trim()] = decodeURIComponent(value);
@@ -103,7 +105,7 @@ async function monitorProduct() {
           console.log("Token not found");
       }
 
-      const newCheckoutUrl = checkoutUrl + token
+      const newCheckoutUrl = hostsite +`/${shop_id}/checkouts/` + token
       // can also be found in response headers['tracked_start_checkout']
       //output requested for the evaluation
       //the output you were looking for

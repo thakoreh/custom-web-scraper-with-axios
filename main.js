@@ -62,12 +62,12 @@ var cartAddUrl = 'https://telfar.net/cart/add.js';
 // Define the cart URL
 var cartUrl = 'https://telfar.net/cart.js';
 // Define the checkout URL
-var checkoutUrl = 'https://telfar.net/8807204/checkouts/';
+var hostsite = 'https://telfar.net';
 // Function to monitor the product
 //we can include argument here for product so we can call the function, best case is we include in products loop
 function monitorProduct() {
     return __awaiter(this, void 0, void 0, function () {
-        var productResponse, productData, isAvailable, firstVariant, quantityOrdered, jar, client, url, config, cookies_1, cookieString, cartAddResponse, cookies_add, cookieMap, cart_ts, cart_ver, cartKey, currentTimestamp, cookieString1, formData, cartResponse, html, regex, match, token, newCheckoutUrl, error_1;
+        var productResponse, productData, isAvailable, firstVariant, quantityOrdered, jar, client, url, config, cookies_1, cookieString, cartAddResponse, cartHeaders, shop_id, cookies_add, cookieMap, cart_ts, cart_ver, cartKey, currentTimestamp, cookieString1, formData, cartResponse, html, regex, match, token, newCheckoutUrl, error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -106,7 +106,9 @@ function monitorProduct() {
                         })];
                 case 3:
                     cartAddResponse = _a.sent();
-                    cookies_add = cartAddResponse.headers['set-cookie'];
+                    cartHeaders = cartAddResponse.headers;
+                    shop_id = cartHeaders['x-shopid'];
+                    cookies_add = cartHeaders['set-cookie'];
                     cookieMap = cookies_add.reduce(function (map, cookie) {
                         var _a = cookie.split('='), key = _a[0], value = _a[1];
                         map[key.trim()] = decodeURIComponent(value);
@@ -139,7 +141,7 @@ function monitorProduct() {
                     else {
                         console.log("Token not found");
                     }
-                    newCheckoutUrl = checkoutUrl + token;
+                    newCheckoutUrl = hostsite + "/".concat(shop_id, "/checkouts/") + token;
                     // can also be found in response headers['tracked_start_checkout']
                     //output requested for the evaluation
                     //the output you were looking for
