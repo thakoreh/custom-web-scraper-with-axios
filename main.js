@@ -49,6 +49,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var axios_1 = require("axios");
 var FormData = require("form-data");
+var cheerio = require("cheerio");
 // Import necessary modules for handling cookies
 var axios_cookiejar_support_1 = require("axios-cookiejar-support");
 var tough_cookie_1 = require("tough-cookie");
@@ -68,17 +69,17 @@ var hostsite = 'https://telfar.net';
 //we can include argument here for product so we can call the function, best case is we include in products loop
 function monitorProduct() {
     return __awaiter(this, void 0, void 0, function () {
-        var productResponse, productData, isAvailable, firstVariant, quantityOrdered, jar, client, url, config, cookies_1, cookieString, cartAddResponse, cartHeaders, shop_id, cookies_add, cookieMap, cart_ts, cart_ver, cartKey, currentTimestamp, cookieString1, formData, cartResponse, html, regex, match, token, newCheckoutUrl, error_1;
+        var productResponse, productData, isAvailable, firstVariant, quantityOrdered, jar, client, url, config, cookies_1, cookieString, cartAddResponse, cartHeaders, shop_id, cookies_add, cookieMap, cart_ts, cart_ver, cartKey, currentTimestamp, cookieString1, formData, cartResponse, html, regex, match, token, newCheckoutUrl, checkoutResponse, checkoutHtml, tokenRegex, tokenMatch, authenticityToken, shippingAddress, checkout, formDataForCheckout, validateAddress, shippingResponse, $, error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    _a.trys.push([0, 7, , 8]);
+                    _a.trys.push([0, 10, , 11]);
                     return [4 /*yield*/, axios_1.default.get(productUrl)];
                 case 1:
                     productResponse = _a.sent();
                     productData = productResponse.data;
                     isAvailable = productResponse.data.available && productResponse.data.variants[0].available;
-                    if (!isAvailable) return [3 /*break*/, 5];
+                    if (!isAvailable) return [3 /*break*/, 8];
                     console.log("..Stock is Available..");
                     console.log("Adding to cart as it is available in stock...");
                     firstVariant = productData.variants[0].id;
@@ -142,19 +143,117 @@ function monitorProduct() {
                     else {
                         console.log("Token not found");
                     }
-                    newCheckoutUrl = hostsite + "/".concat(shop_id, "/checkouts/") + token;
+                    newCheckoutUrl = hostsite + "/".concat(shop_id, "/checkouts/") + cookies_1['tracked_start_checkout'];
                     // Output the checkout URL
                     console.log("Checkout URL : " + newCheckoutUrl);
-                    return [3 /*break*/, 6];
+                    return [4 /*yield*/, client.get(newCheckoutUrl)];
                 case 5:
-                    console.log('Product is out of stock');
-                    _a.label = 6;
-                case 6: return [3 /*break*/, 8];
+                    checkoutResponse = _a.sent();
+                    checkoutHtml = checkoutResponse.data;
+                    tokenRegex = /name="authenticity_token" value="(.*?)"/g;
+                    tokenMatch = tokenRegex.exec(checkoutHtml);
+                    authenticityToken = '';
+                    if (tokenMatch) {
+                        authenticityToken = tokenMatch[1];
+                        console.log("Authenticity token :" + authenticityToken);
+                    }
+                    else {
+                        console.log("Authenticity token not found");
+                    }
+                    shippingAddress = {
+                        "email": "Jone.Doe+telfar@gmail.com",
+                        "phone": "2269759412",
+                        "company": "home",
+                        "first_name": "Jone",
+                        "last_name": "Doe",
+                        "address_1": "8647 SAN YSIDRO AVE",
+                        "address_2": "UNIT M-4",
+                        "city": "GILROY",
+                        "zip": "95020-3644",
+                        "country": "United States",
+                        "state": "CA",
+                        "shop": "shop-telfar",
+                        "token": "45d125ed9e4428ed2eaa4824d47bd3c6",
+                        "step": "contact_information",
+                        "shipping": true
+                    };
+                    checkout = {
+                        shipping_address: shippingAddress,
+                        email: shippingAddress['email'],
+                        remember_me: false,
+                        buyer_accepts_sms: 0,
+                        sms_marketing_phone: '000',
+                        client_details: {
+                            browser_width: 1903,
+                            browser_height: 955,
+                            javascript_enabled: 1,
+                            color_depth: 24,
+                            java_enabled: false,
+                            browser_tz: 240
+                        }
+                    };
+                    formDataForCheckout = new FormData();
+                    formDataForCheckout.append('_method', 'patch');
+                    formDataForCheckout.append('authenticity_token', authenticityToken);
+                    formDataForCheckout.append('checkout[email]', 'Jone.Doe+telfar@gmail.com');
+                    formDataForCheckout.append('checkout[buyer_accepts_marketing]', '0');
+                    formDataForCheckout.append('checkout[shipping_address][first_name]', '');
+                    formDataForCheckout.append('checkout[shipping_address][last_name]', '');
+                    formDataForCheckout.append('checkout[shipping_address][company]', '');
+                    formDataForCheckout.append('checkout[shipping_address][address1]', '');
+                    formDataForCheckout.append('checkout[shipping_address][address2]', '');
+                    formDataForCheckout.append('checkout[shipping_address][city]', '');
+                    formDataForCheckout.append('checkout[shipping_address][country]', '');
+                    formDataForCheckout.append('checkout[shipping_address][province]', '');
+                    formDataForCheckout.append('checkout[shipping_address][zip]', '');
+                    formDataForCheckout.append('checkout[shipping_address][phone]', '');
+                    formDataForCheckout.append('checkout[shipping_address][country]', 'United States');
+                    formDataForCheckout.append('checkout[shipping_address][first_name]', 'Jone');
+                    formDataForCheckout.append('checkout[shipping_address][last_name]', 'Doe');
+                    formDataForCheckout.append('checkout[shipping_address][company]', 'home');
+                    formDataForCheckout.append('checkout[shipping_address][address1]', '8647 SAN YSIDRO AVE');
+                    formDataForCheckout.append('checkout[shipping_address][address2]', 'UNIT M-4');
+                    formDataForCheckout.append('checkout[shipping_address][city]', 'GILROY');
+                    formDataForCheckout.append('checkout[shipping_address][province]', 'CA');
+                    formDataForCheckout.append('checkout[shipping_address][zip]', '95020-3644');
+                    formDataForCheckout.append('checkout[shipping_address][phone]', '2269759412');
+                    formDataForCheckout.append('checkout[remember_me]', 'false');
+                    formDataForCheckout.append('checkout[remember_me]', '0');
+                    formDataForCheckout.append('checkout[buyer_accepts_sms]', '0');
+                    formDataForCheckout.append('checkout[sms_marketing_phone]', '');
+                    formDataForCheckout.append('checkout[client_details][browser_width]', '522');
+                    formDataForCheckout.append('checkout[client_details][browser_height]', '868');
+                    formDataForCheckout.append('checkout[client_details][javascript_enabled]', '1');
+                    formDataForCheckout.append('checkout[client_details][color_depth]', '24');
+                    formDataForCheckout.append('checkout[client_details][java_enabled]', 'false');
+                    formDataForCheckout.append('checkout[client_details][browser_tz]', '240');
+                    return [4 /*yield*/, client.post("https://app.roboturk.co/address_validator/api/checkout_validate", shippingAddress)];
+                case 6:
+                    validateAddress = _a.sent();
+                    if (validateAddress.data === "Address is valid") {
+                        console.log(validateAddress.data);
+                    }
+                    else {
+                        console.log('Please check address again!');
+                    }
+                    return [4 /*yield*/, client.post(newCheckoutUrl, formDataForCheckout, {
+                            headers: __assign(__assign({}, formData.getHeaders()), { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0', 'Cache-Control': 'no-cache' })
+                        })];
                 case 7:
+                    shippingResponse = _a.sent();
+                    $ = cheerio.load(shippingResponse.data);
+                    console.log("Shipping Method : " + $('span.radio__label__primary').text().trim());
+                    console.log("Shipping Rate : " + $('span.content-box__emphasis').text().trim());
+                    return [3 /*break*/, 9];
+                case 8:
+                    console.log('Product is out of stock');
+                    _a.label = 9;
+                case 9: return [3 /*break*/, 11];
+                case 10:
                     error_1 = _a.sent();
                     console.error(error_1);
-                    return [3 /*break*/, 8];
-                case 8: return [2 /*return*/];
+                    return [3 /*break*/, 11];
+                case 11: return [2 /*return*/];
             }
         });
     });

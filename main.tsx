@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as FormData from 'form-data';
+import * as cheerio from 'cheerio';
 // Import necessary modules for handling cookies
 import { wrapper } from 'axios-cookiejar-support';
 import { CookieJar } from 'tough-cookie';
@@ -109,10 +110,143 @@ async function monitorProduct() {
           console.log("Token not found");
       }
       // Construct the checkout URL using the shop ID and checkout token
-      const newCheckoutUrl = hostsite +`/${shop_id}/checkouts/` + token
+      // const newCheckoutUrl = hostsite +`/${shop_id}/checkouts/` + token
+      const newCheckoutUrl = hostsite +`/${shop_id}/checkouts/` + cookies['tracked_start_checkout']
       // Output the checkout URL
       console.log("Checkout URL : " + newCheckoutUrl);
 
+      // Fetch the checkout page
+      const checkoutResponse = await client.get(newCheckoutUrl);
+      let checkoutHtml: string = checkoutResponse.data;
+      // console.log(checkoutHtml)
+      // Extract the authenticity token
+      let tokenRegex = /name="authenticity_token" value="(.*?)"/g;
+      let tokenMatch = tokenRegex.exec(checkoutHtml);
+      let authenticityToken = '';
+      if (tokenMatch) {
+        authenticityToken = tokenMatch[1];
+        console.log("Authenticity token :"+authenticityToken);
+      } else {
+        console.log("Authenticity token not found");
+      }
+
+      // Define the shipping address
+      let shippingAddress = {
+
+          "email": "Jone.Doe+telfar@gmail.com",
+          "phone": "2269759412",
+          "company": "home",
+          "first_name": "Jone",
+          "last_name": "Doe",
+          "address_1": "8647 SAN YSIDRO AVE",
+          "address_2": "UNIT M-4",
+          "city": "GILROY",
+          "zip": "95020-3644",
+          "country": "United States",
+          "state": "CA",
+          "shop": "shop-telfar",
+          "token": "45d125ed9e4428ed2eaa4824d47bd3c6",
+          "step": "contact_information",
+          "shipping": true
+      };
+      var checkout = {
+        shipping_address : shippingAddress,
+        email :shippingAddress['email'],
+        remember_me: false,
+        buyer_accepts_sms: 0,
+        sms_marketing_phone:'000',
+        client_details: {
+          browser_width: 1903,
+          browser_height: 955,
+          javascript_enabled: 1,
+          color_depth: 24,
+          java_enabled: false,
+          browser_tz: 240
+        }
+      }
+      // https://app.roboturk.co/address_validator/api/checkout_validate
+      // data-shipping-methods tag to search for shipping options
+
+      // Create a FormData object for the cart request
+      //hardcoded for now, just for testing
+      var formDataForCheckout = new FormData();
+      formDataForCheckout.append('_method', 'patch');
+      formDataForCheckout.append('authenticity_token', authenticityToken);
+      formDataForCheckout.append('checkout[email]', 'Jone.Doe+telfar@gmail.com');
+      formDataForCheckout.append('checkout[buyer_accepts_marketing]', '0');
+      formDataForCheckout.append('checkout[shipping_address][first_name]', '');
+      formDataForCheckout.append('checkout[shipping_address][last_name]', '');
+      formDataForCheckout.append('checkout[shipping_address][company]', '');
+      formDataForCheckout.append('checkout[shipping_address][address1]', '');
+      formDataForCheckout.append('checkout[shipping_address][address2]', '');
+      formDataForCheckout.append('checkout[shipping_address][city]', '');
+      formDataForCheckout.append('checkout[shipping_address][country]', '');
+      formDataForCheckout.append('checkout[shipping_address][province]', '');
+      formDataForCheckout.append('checkout[shipping_address][zip]', '');
+      formDataForCheckout.append('checkout[shipping_address][phone]', '');
+      formDataForCheckout.append('checkout[shipping_address][country]', 'United States');
+      formDataForCheckout.append('checkout[shipping_address][first_name]', 'Jone');
+      formDataForCheckout.append('checkout[shipping_address][last_name]', 'Doe');
+      formDataForCheckout.append('checkout[shipping_address][company]', 'home');
+      formDataForCheckout.append('checkout[shipping_address][address1]', '8647 SAN YSIDRO AVE');
+      formDataForCheckout.append('checkout[shipping_address][address2]', 'UNIT M-4');
+      formDataForCheckout.append('checkout[shipping_address][city]', 'GILROY');
+      formDataForCheckout.append('checkout[shipping_address][province]', 'CA');
+      formDataForCheckout.append('checkout[shipping_address][zip]', '95020-3644');
+      formDataForCheckout.append('checkout[shipping_address][phone]', '2269759412');
+      formDataForCheckout.append('checkout[remember_me]', 'false');
+      formDataForCheckout.append('checkout[remember_me]', '0');
+      formDataForCheckout.append('checkout[buyer_accepts_sms]', '0');
+      formDataForCheckout.append('checkout[sms_marketing_phone]', '');
+      formDataForCheckout.append('checkout[client_details][browser_width]', '522');
+      formDataForCheckout.append('checkout[client_details][browser_height]', '868');
+      formDataForCheckout.append('checkout[client_details][javascript_enabled]', '1');
+      formDataForCheckout.append('checkout[client_details][color_depth]', '24');
+      formDataForCheckout.append('checkout[client_details][java_enabled]', 'false');
+      formDataForCheckout.append('checkout[client_details][browser_tz]', '240');
+
+
+      
+      //validate our address
+      const validateAddress = await client.post("https://app.roboturk.co/address_validator/api/checkout_validate",shippingAddress) 
+
+      if (validateAddress.data==="Address is valid") {
+        console.log(validateAddress.data)
+      }
+      else {
+        console.log('Please check address again!');
+      }
+      // Submit the shipping information
+      const shippingResponse = await client.post(newCheckoutUrl, formDataForCheckout, {
+        headers: {...formData.getHeaders(),
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0',
+        'Cache-Control': 'no-cache',
+      }
+      });
+
+      const $ = cheerio.load(shippingResponse.data);
+      console.log("Shipping Method : "+$('span.radio__label__primary').text().trim())
+      console.log("Shipping Rate : "+$('span.content-box__emphasis').text().trim())
+
+      // skeleton code to get idea on how many shipping options available (still in work)
+      // const shippingResponseHtml: string = shippingResponse.data;
+      // // Extract the shipping methods and rates
+      // const shippingMethods = [];
+      // const shippingMethodRegex = /data-shipping-method="([^"]+)".*?>([\d.]+)<\/span>/g;
+      // var match_1;
+      // while ((match_1 = shippingMethodRegex.exec(shippingResponseHtml)) !== null) {
+      //   const method = match_1[1];
+      //   console.log(method);
+      //   const rate = match_1[2];
+      //   shippingMethods.push({ method, rate });
+      // }
+
+      // // Print the extracted shipping methods and rates
+      // shippingMethods.forEach((shippingMethod) => {
+      //   console.log(`Shipping Method: ${shippingMethod.method}`);
+      //   console.log(`Rate: $${shippingMethod.rate}`);
+      //   console.log('---');
+      // });
 
 
     }
