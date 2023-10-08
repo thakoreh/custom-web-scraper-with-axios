@@ -1,3 +1,4 @@
+//import necessary npm packages
 import axios from 'axios';
 import * as FormData from 'form-data';
 import * as cheerio from 'cheerio';
@@ -30,11 +31,12 @@ async function monitorProduct() {
     // Fetch the product data
     const productResponse = await axios.get(productUrl);
     const productData = productResponse.data;
+    console.log("Checking if stock is available or not...");
     const isAvailable = productResponse.data.available && productResponse.data.variants[0].available
 
     // Check if the main product is in stock and also first variant as we are only taking that under consideration for now (testing purpose)
     if (isAvailable) {
-      console.log("..Stock is Available..");
+      console.log("...Stock is Available");
       console.log("Adding to cart as it is available in stock...");
       // Get the ID of the first variant and set the quantity to 1
       const firstVariant = productData.variants[0].id
@@ -44,12 +46,14 @@ async function monitorProduct() {
 
       // Create a cookie jar and a client with cookie support
       const jar = new CookieJar();
+      // wrapping axios with jar , now any changes to jar for cookies will be available to all the following axios requests, easier to keep track of all the cookies used
       const client = wrapper(axios.create({ jar }));
 
       const url = `https://telfar.net/cart/${firstVariant}:${quantityOrdered}`
       const {config} = await client.get(url);
-
+      //using cookies to store in it which we find available cookies from the cart/ url
       let cookies = {};
+      //addings values in cookies
       config.jar.toJSON().cookies.forEach((cookie) => {
         cookies[cookie.key] = cookie.value || '';
       });
@@ -66,12 +70,13 @@ async function monitorProduct() {
       const cartHeaders = cartAddResponse.headers
       const shop_id = cartHeaders['x-shopid']
       const cookies_add = cartHeaders['set-cookie']
+      //using cookieMap to find available cookies from the cart/add/ url // somehow we are missing some cookies from cart/ so we need to use cart/add, could be good-first-issue for new dev to figure this out
       const cookieMap = cookies_add.reduce((map, cookie) => {
         const [key, value] = cookie.split('=');
         map[key.trim()] = decodeURIComponent(value);
         return map;
       }, {});
-      
+      // extracting various other required params and storing in separate variables as needed
       const cart_ts = cookieMap['cart_ts'].split(';')[0]
       const cart_ver = cookieMap['cart_ver'].split(';')[0]
       const cartKey = cookieMap['cart'].split(';')[0]
@@ -118,19 +123,19 @@ async function monitorProduct() {
       // Fetch the checkout page
       const checkoutResponse = await client.get(newCheckoutUrl);
       let checkoutHtml: string = checkoutResponse.data;
-      // console.log(checkoutHtml)
-      // Extract the authenticity token
+
+      // Extract the authenticity token using regex
       let tokenRegex = /name="authenticity_token" value="(.*?)"/g;
       let tokenMatch = tokenRegex.exec(checkoutHtml);
       let authenticityToken = '';
       if (tokenMatch) {
         authenticityToken = tokenMatch[1];
-        console.log("Authenticity token :"+authenticityToken);
+        
       } else {
         console.log("Authenticity token not found");
       }
 
-      // Define the shipping address
+      // Define the shipping address # hardcoded shipping address for testing purposes
       let shippingAddress = {
 
           "email": "Jone.Doe+telfar@gmail.com",
@@ -149,6 +154,7 @@ async function monitorProduct() {
           "step": "contact_information",
           "shipping": true
       };
+      //structuring checkout payload, it can be used for dynamic fetch for later stages
       var checkout = {
         shipping_address : shippingAddress,
         email :shippingAddress['email'],
@@ -164,7 +170,7 @@ async function monitorProduct() {
           browser_tz: 240
         }
       }
-      // https://app.roboturk.co/address_validator/api/checkout_validate
+      // URL is used for validating addresses : https://app.roboturk.co/address_validator/api/checkout_validate
       // data-shipping-methods tag to search for shipping options
 
       // Create a FormData object for the cart request
@@ -223,34 +229,21 @@ async function monitorProduct() {
         'Cache-Control': 'no-cache',
       }
       });
-
+      //using cheerio for extracting data through parsing html
       const $ = cheerio.load(shippingResponse.data);
-      console.log("Shipping Method : "+$('span.radio__label__primary').text().trim())
-      console.log("Shipping Rate : "+$('span.content-box__emphasis').text().trim())
 
-      // skeleton code to get idea on how many shipping options available (still in work)
-      // const shippingResponseHtml: string = shippingResponse.data;
-      // // Extract the shipping methods and rates
-      // const shippingMethods = [];
-      // const shippingMethodRegex = /data-shipping-method="([^"]+)".*?>([\d.]+)<\/span>/g;
-      // var match_1;
-      // while ((match_1 = shippingMethodRegex.exec(shippingResponseHtml)) !== null) {
-      //   const method = match_1[1];
-      //   console.log(method);
-      //   const rate = match_1[2];
-      //   shippingMethods.push({ method, rate });
-      // }
-
-      // // Print the extracted shipping methods and rates
-      // shippingMethods.forEach((shippingMethod) => {
-      //   console.log(`Shipping Method: ${shippingMethod.method}`);
-      //   console.log(`Rate: $${shippingMethod.rate}`);
-      //   console.log('---');
-      // });
-
-
+      console.log("All the available Shipping Options and its rate :");
+      //label.radio__label span is used here as the information for shipping is available there. You can also this when doing inspecting elements in browser in developer mode (press F12 -> network -> look for requests)
+      $('label.radio__label span').each(function(i, elm) {
+        const regexp = /radio__label/g;
+        // information about shipping options present in this class name so we are doing regex
+        if (regexp.test($(elm).attr('class'))) {
+          console.log($(elm).text().trim());
+        }
+      });
     }
      else {
+      //display console log if product is not in stock
       console.log('Product is out of stock');
     }
 

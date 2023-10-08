@@ -69,7 +69,7 @@ var hostsite = 'https://telfar.net';
 //we can include argument here for product so we can call the function, best case is we include in products loop
 function monitorProduct() {
     return __awaiter(this, void 0, void 0, function () {
-        var productResponse, productData, isAvailable, firstVariant, quantityOrdered, jar, client, url, config, cookies_1, cookieString, cartAddResponse, cartHeaders, shop_id, cookies_add, cookieMap, cart_ts, cart_ver, cartKey, currentTimestamp, cookieString1, formData, cartResponse, html, regex, match, token, newCheckoutUrl, checkoutResponse, checkoutHtml, tokenRegex, tokenMatch, authenticityToken, shippingAddress, checkout, formDataForCheckout, validateAddress, shippingResponse, $, error_1;
+        var productResponse, productData, isAvailable, firstVariant, quantityOrdered, jar, client, url, config, cookies_1, cookieString, cartAddResponse, cartHeaders, shop_id, cookies_add, cookieMap, cart_ts, cart_ver, cartKey, currentTimestamp, cookieString1, formData, cartResponse, html, regex, match, token, newCheckoutUrl, checkoutResponse, checkoutHtml, tokenRegex, tokenMatch, authenticityToken, shippingAddress, checkout, formDataForCheckout, validateAddress, shippingResponse, $_1, countOfShippingOptions, error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -241,9 +241,21 @@ function monitorProduct() {
                         })];
                 case 7:
                     shippingResponse = _a.sent();
-                    $ = cheerio.load(shippingResponse.data);
-                    console.log("Shipping Method : " + $('span.radio__label__primary').text().trim());
-                    console.log("Shipping Rate : " + $('span.content-box__emphasis').text().trim());
+                    $_1 = cheerio.load(shippingResponse.data);
+                    console.log("All the available Shipping Options and its rate :");
+                    countOfShippingOptions = 1;
+                    $_1('label.radio__label span').each(function (i, elm) {
+                        var regexp = /radio__label/g;
+                        // const regexp1 = /accessory/g;
+                        // if (!regexp1.test($(elm).attr('class'))) {
+                        //   console.log(`Shipping Option : ${countOfShippingOptions}`);
+                        //   countOfShippingOptions++;
+                        // }
+                        // information about shipping options present in this class name so we are doing regex
+                        if (regexp.test($_1(elm).attr('class'))) {
+                            console.log($_1(elm).text().trim());
+                        }
+                    });
                     return [3 /*break*/, 9];
                 case 8:
                     console.log('Product is out of stock');
