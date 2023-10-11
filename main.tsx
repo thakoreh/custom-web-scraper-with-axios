@@ -212,7 +212,7 @@ async function monitorProduct() {
       else {
         console.log('Please check address again!');
       }
-      // Submit the shipping information
+      // Getting shipping rates based on address provided earlier
       let shippingRateUrl = `https://telfar.net/cart/shipping_rates.json?shipping_address[zip]=${checkout['shipping_address']['zip']}&shipping_address[country]=${checkout['shipping_address']['country']}&shipping_address[province]=${checkout['shipping_address']['state']}`
       const shippingResponse = await client.get(shippingRateUrl, {
         headers: {...formData.getHeaders(),
