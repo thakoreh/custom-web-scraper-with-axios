@@ -196,28 +196,20 @@ function monitorProduct() {
                     formDataForCheckout = new FormData();
                     formDataForCheckout.append('_method', 'patch');
                     formDataForCheckout.append('authenticity_token', authenticityToken);
-                    formDataForCheckout.append('checkout[email]', 'Jone.Doe+telfar@gmail.com');
-                    formDataForCheckout.append('checkout[buyer_accepts_marketing]', '0');
-                    formDataForCheckout.append('checkout[shipping_address][country]', 'United States');
-                    formDataForCheckout.append('checkout[shipping_address][first_name]', 'Jone');
-                    formDataForCheckout.append('checkout[shipping_address][last_name]', 'Doe');
-                    formDataForCheckout.append('checkout[shipping_address][company]', 'home');
-                    formDataForCheckout.append('checkout[shipping_address][address1]', '8647 SAN YSIDRO AVE');
-                    formDataForCheckout.append('checkout[shipping_address][address2]', 'UNIT M-4');
-                    formDataForCheckout.append('checkout[shipping_address][city]', 'GILROY');
-                    formDataForCheckout.append('checkout[shipping_address][state]', 'CA');
-                    formDataForCheckout.append('checkout[shipping_address][zip]', '95020-3644');
-                    formDataForCheckout.append('checkout[shipping_address][phone]', '2269759412');
-                    formDataForCheckout.append('checkout[remember_me]', 'false');
-                    formDataForCheckout.append('checkout[remember_me]', '0');
-                    formDataForCheckout.append('checkout[buyer_accepts_sms]', '0');
-                    formDataForCheckout.append('checkout[sms_marketing_phone]', '');
-                    formDataForCheckout.append('checkout[client_details][browser_width]', '522');
-                    formDataForCheckout.append('checkout[client_details][browser_height]', '868');
-                    formDataForCheckout.append('checkout[client_details][javascript_enabled]', '1');
-                    formDataForCheckout.append('checkout[client_details][color_depth]', '24');
-                    formDataForCheckout.append('checkout[client_details][java_enabled]', 'false');
-                    formDataForCheckout.append('checkout[client_details][browser_tz]', '240');
+                    formDataForCheckout.append('checkout[email]', checkout['email']);
+                    formDataForCheckout.append('checkout[buyer_accepts_marketing]', checkout['buyer_accepts_sms']);
+                    formDataForCheckout.append('checkout[shipping_address][country]', checkout['shipping_address']['country']);
+                    formDataForCheckout.append('checkout[shipping_address][first_name]', checkout['shipping_address']['first_name']);
+                    formDataForCheckout.append('checkout[shipping_address][last_name]', checkout['shipping_address']['last_name']);
+                    formDataForCheckout.append('checkout[shipping_address][company]', checkout['shipping_address']['company']);
+                    formDataForCheckout.append('checkout[shipping_address][address1]', checkout['shipping_address']['address_1']);
+                    formDataForCheckout.append('checkout[shipping_address][address2]', checkout['shipping_address']['address_2']);
+                    formDataForCheckout.append('checkout[shipping_address][city]', checkout['shipping_address']['city']);
+                    formDataForCheckout.append('checkout[shipping_address][state]', checkout['shipping_address']['state']);
+                    formDataForCheckout.append('checkout[shipping_address][zip]', checkout['shipping_address']['zip']);
+                    formDataForCheckout.append('checkout[shipping_address][phone]', checkout['shipping_address']['phone']);
+                    formDataForCheckout.append('checkout[remember_me]', checkout['remember_me']);
+                    formDataForCheckout.append('checkout[sms_marketing_phone]', checkout['sms_marketing_phone']);
                     return [4 /*yield*/, client.post("https://app.roboturk.co/address_validator/api/checkout_validate", shippingAddress)];
                 case 6:
                     validateAddress = _a.sent();
@@ -228,6 +220,7 @@ function monitorProduct() {
                         console.log('Please check address again!');
                     }
                     shippingRateUrl = "https://telfar.net/cart/shipping_rates.json?shipping_address[zip]=".concat(checkout['shipping_address']['zip'], "&shipping_address[country]=").concat(checkout['shipping_address']['country'], "&shipping_address[province]=").concat(checkout['shipping_address']['state']);
+                    console.log(shippingRateUrl);
                     return [4 /*yield*/, client.get(shippingRateUrl, {
                             headers: __assign(__assign({}, formData.getHeaders()), { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0', 'Cache-Control': 'no-cache' })
                         })];
