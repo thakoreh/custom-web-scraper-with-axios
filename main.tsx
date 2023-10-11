@@ -180,16 +180,6 @@ async function monitorProduct() {
       formDataForCheckout.append('authenticity_token', authenticityToken);
       formDataForCheckout.append('checkout[email]', 'Jone.Doe+telfar@gmail.com');
       formDataForCheckout.append('checkout[buyer_accepts_marketing]', '0');
-      formDataForCheckout.append('checkout[shipping_address][first_name]', '');
-      formDataForCheckout.append('checkout[shipping_address][last_name]', '');
-      formDataForCheckout.append('checkout[shipping_address][company]', '');
-      formDataForCheckout.append('checkout[shipping_address][address1]', '');
-      formDataForCheckout.append('checkout[shipping_address][address2]', '');
-      formDataForCheckout.append('checkout[shipping_address][city]', '');
-      formDataForCheckout.append('checkout[shipping_address][country]', '');
-      formDataForCheckout.append('checkout[shipping_address][province]', '');
-      formDataForCheckout.append('checkout[shipping_address][zip]', '');
-      formDataForCheckout.append('checkout[shipping_address][phone]', '');
       formDataForCheckout.append('checkout[shipping_address][country]', 'United States');
       formDataForCheckout.append('checkout[shipping_address][first_name]', 'Jone');
       formDataForCheckout.append('checkout[shipping_address][last_name]', 'Doe');
@@ -197,7 +187,7 @@ async function monitorProduct() {
       formDataForCheckout.append('checkout[shipping_address][address1]', '8647 SAN YSIDRO AVE');
       formDataForCheckout.append('checkout[shipping_address][address2]', 'UNIT M-4');
       formDataForCheckout.append('checkout[shipping_address][city]', 'GILROY');
-      formDataForCheckout.append('checkout[shipping_address][province]', 'CA');
+      formDataForCheckout.append('checkout[shipping_address][state]', 'CA');
       formDataForCheckout.append('checkout[shipping_address][zip]', '95020-3644');
       formDataForCheckout.append('checkout[shipping_address][phone]', '2269759412');
       formDataForCheckout.append('checkout[remember_me]', 'false');
@@ -223,24 +213,18 @@ async function monitorProduct() {
         console.log('Please check address again!');
       }
       // Submit the shipping information
-      const shippingResponse = await client.post(newCheckoutUrl, formDataForCheckout, {
+      let shippingRateUrl = `https://telfar.net/cart/shipping_rates.json?shipping_address[zip]=${checkout['shipping_address']['zip']}&shipping_address[country]=${checkout['shipping_address']['country']}&shipping_address[province]=${checkout['shipping_address']['state']}`
+      const shippingResponse = await client.get(shippingRateUrl, {
         headers: {...formData.getHeaders(),
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0',
         'Cache-Control': 'no-cache',
       }
       });
-      //using cheerio for extracting data through parsing html
-      const $ = cheerio.load(shippingResponse.data);
-
-      console.log("All the available Shipping Options and its rate :");
-      //label.radio__label span is used here as the information for shipping is available there. You can also this when doing inspecting elements in browser in developer mode (press F12 -> network -> look for requests)
-      $('label.radio__label span').each(function(i, elm) {
-        const regexp = /radio__label/g;
-        // information about shipping options present in this class name so we are doing regex
-        if (regexp.test($(elm).attr('class'))) {
-          console.log($(elm).text().trim());
-        }
+      console.log("Listing all the available shipping methods and its cost :")
+      shippingResponse.data.shipping_rates.forEach(rate => {
+        console.log(`Name: ${rate.name}, Price: ${rate.price}`);
       });
+      
     }
      else {
       //display console log if product is not in stock

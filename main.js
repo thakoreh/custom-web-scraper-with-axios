@@ -47,9 +47,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+//import necessary npm packages
 var axios_1 = require("axios");
 var FormData = require("form-data");
-var cheerio = require("cheerio");
 // Import necessary modules for handling cookies
 var axios_cookiejar_support_1 = require("axios-cookiejar-support");
 var tough_cookie_1 = require("tough-cookie");
@@ -69,7 +69,7 @@ var hostsite = 'https://telfar.net';
 //we can include argument here for product so we can call the function, best case is we include in products loop
 function monitorProduct() {
     return __awaiter(this, void 0, void 0, function () {
-        var productResponse, productData, isAvailable, firstVariant, quantityOrdered, jar, client, url, config, cookies_1, cookieString, cartAddResponse, cartHeaders, shop_id, cookies_add, cookieMap, cart_ts, cart_ver, cartKey, currentTimestamp, cookieString1, formData, cartResponse, html, regex, match, token, newCheckoutUrl, checkoutResponse, checkoutHtml, tokenRegex, tokenMatch, authenticityToken, shippingAddress, checkout, formDataForCheckout, validateAddress, shippingResponse, $_1, countOfShippingOptions, error_1;
+        var productResponse, productData, isAvailable, firstVariant, quantityOrdered, jar, client, url, config, cookies_1, cookieString, cartAddResponse, cartHeaders, shop_id, cookies_add, cookieMap, cart_ts, cart_ver, cartKey, currentTimestamp, cookieString1, formData, cartResponse, html, regex, match, token, newCheckoutUrl, checkoutResponse, checkoutHtml, tokenRegex, tokenMatch, authenticityToken, shippingAddress, checkout, formDataForCheckout, validateAddress, shippingRateUrl, shippingResponse, error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -78,9 +78,10 @@ function monitorProduct() {
                 case 1:
                     productResponse = _a.sent();
                     productData = productResponse.data;
+                    console.log("Checking if stock is available or not...");
                     isAvailable = productResponse.data.available && productResponse.data.variants[0].available;
                     if (!isAvailable) return [3 /*break*/, 8];
-                    console.log("..Stock is Available..");
+                    console.log("...Stock is Available");
                     console.log("Adding to cart as it is available in stock...");
                     firstVariant = productData.variants[0].id;
                     quantityOrdered = 1;
@@ -92,6 +93,7 @@ function monitorProduct() {
                 case 2:
                     config = (_a.sent()).config;
                     cookies_1 = {};
+                    //addings values in cookies
                     config.jar.toJSON().cookies.forEach(function (cookie) {
                         cookies_1[cookie.key] = cookie.value || '';
                     });
@@ -155,7 +157,6 @@ function monitorProduct() {
                     authenticityToken = '';
                     if (tokenMatch) {
                         authenticityToken = tokenMatch[1];
-                        console.log("Authenticity token :" + authenticityToken);
                     }
                     else {
                         console.log("Authenticity token not found");
@@ -197,16 +198,6 @@ function monitorProduct() {
                     formDataForCheckout.append('authenticity_token', authenticityToken);
                     formDataForCheckout.append('checkout[email]', 'Jone.Doe+telfar@gmail.com');
                     formDataForCheckout.append('checkout[buyer_accepts_marketing]', '0');
-                    formDataForCheckout.append('checkout[shipping_address][first_name]', '');
-                    formDataForCheckout.append('checkout[shipping_address][last_name]', '');
-                    formDataForCheckout.append('checkout[shipping_address][company]', '');
-                    formDataForCheckout.append('checkout[shipping_address][address1]', '');
-                    formDataForCheckout.append('checkout[shipping_address][address2]', '');
-                    formDataForCheckout.append('checkout[shipping_address][city]', '');
-                    formDataForCheckout.append('checkout[shipping_address][country]', '');
-                    formDataForCheckout.append('checkout[shipping_address][province]', '');
-                    formDataForCheckout.append('checkout[shipping_address][zip]', '');
-                    formDataForCheckout.append('checkout[shipping_address][phone]', '');
                     formDataForCheckout.append('checkout[shipping_address][country]', 'United States');
                     formDataForCheckout.append('checkout[shipping_address][first_name]', 'Jone');
                     formDataForCheckout.append('checkout[shipping_address][last_name]', 'Doe');
@@ -214,7 +205,7 @@ function monitorProduct() {
                     formDataForCheckout.append('checkout[shipping_address][address1]', '8647 SAN YSIDRO AVE');
                     formDataForCheckout.append('checkout[shipping_address][address2]', 'UNIT M-4');
                     formDataForCheckout.append('checkout[shipping_address][city]', 'GILROY');
-                    formDataForCheckout.append('checkout[shipping_address][province]', 'CA');
+                    formDataForCheckout.append('checkout[shipping_address][state]', 'CA');
                     formDataForCheckout.append('checkout[shipping_address][zip]', '95020-3644');
                     formDataForCheckout.append('checkout[shipping_address][phone]', '2269759412');
                     formDataForCheckout.append('checkout[remember_me]', 'false');
@@ -236,28 +227,19 @@ function monitorProduct() {
                     else {
                         console.log('Please check address again!');
                     }
-                    return [4 /*yield*/, client.post(newCheckoutUrl, formDataForCheckout, {
+                    shippingRateUrl = "https://telfar.net/cart/shipping_rates.json?shipping_address[zip]=".concat(checkout['shipping_address']['zip'], "&shipping_address[country]=").concat(checkout['shipping_address']['country'], "&shipping_address[province]=").concat(checkout['shipping_address']['state']);
+                    return [4 /*yield*/, client.get(shippingRateUrl, {
                             headers: __assign(__assign({}, formData.getHeaders()), { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0', 'Cache-Control': 'no-cache' })
                         })];
                 case 7:
                     shippingResponse = _a.sent();
-                    $_1 = cheerio.load(shippingResponse.data);
-                    console.log("All the available Shipping Options and its rate :");
-                    countOfShippingOptions = 1;
-                    $_1('label.radio__label span').each(function (i, elm) {
-                        var regexp = /radio__label/g;
-                        // const regexp1 = /accessory/g;
-                        // if (!regexp1.test($(elm).attr('class'))) {
-                        //   console.log(`Shipping Option : ${countOfShippingOptions}`);
-                        //   countOfShippingOptions++;
-                        // }
-                        // information about shipping options present in this class name so we are doing regex
-                        if (regexp.test($_1(elm).attr('class'))) {
-                            console.log($_1(elm).text().trim());
-                        }
+                    console.log("Listing all the available shipping methods and its cost :");
+                    shippingResponse.data.shipping_rates.forEach(function (rate) {
+                        console.log("Name: ".concat(rate.name, ", Price: ").concat(rate.price));
                     });
                     return [3 /*break*/, 9];
                 case 8:
+                    //display console log if product is not in stock
                     console.log('Product is out of stock');
                     _a.label = 9;
                 case 9: return [3 /*break*/, 11];
