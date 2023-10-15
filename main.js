@@ -69,18 +69,18 @@ var hostsite = 'https://telfar.net';
 //we can include argument here for product so we can call the function, best case is we include in products loop
 function monitorProduct() {
     return __awaiter(this, void 0, void 0, function () {
-        var productResponse, productData, isAvailable, firstVariant, quantityOrdered, jar, client, url, config, cookies_1, cookieString, cartAddResponse, cartHeaders, shop_id, cookies_add, cookieMap, cart_ts, cart_ver, cartKey, currentTimestamp, cookieString1, formData, cartResponse, html, regex, match, token, newCheckoutUrl, checkoutResponse, checkoutHtml, tokenRegex, tokenMatch, authenticityToken, shippingAddress, checkout, formDataForCheckout, validateAddress, shippingRateUrl, shippingResponse, error_1;
+        var productResponse, productData, isAvailable, firstVariant, quantityOrdered, jar, client, url, config, cookies_1, cookieString, cartAddResponse, cartHeaders, shop_id, cookies_add, cookieMap, cart_ts, cart_ver, cartKey, currentTimestamp, cookieString1, formData, cartResponse, html, regex, match, token, newCheckoutUrl, checkoutResponse, checkoutHtml, tokenRegex, tokenMatch, authenticityToken, shippingAddress, checkout, formDataForCheckout, validateAddress, shippingRateUrl, shippingResponse, minRate_1, minRateName_1, shippingIDString, postCheckoutData, postCheckoutURL, error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    _a.trys.push([0, 10, , 11]);
+                    _a.trys.push([0, 11, , 12]);
                     return [4 /*yield*/, axios_1.default.get(productUrl)];
                 case 1:
                     productResponse = _a.sent();
                     productData = productResponse.data;
                     console.log("Checking if stock is available or not...");
                     isAvailable = productResponse.data.available && productResponse.data.variants[0].available;
-                    if (!isAvailable) return [3 /*break*/, 8];
+                    if (!isAvailable) return [3 /*break*/, 9];
                     console.log("...Stock is Available");
                     console.log("Adding to cart as it is available in stock...");
                     firstVariant = productData.variants[0].id;
@@ -220,27 +220,52 @@ function monitorProduct() {
                         console.log('Please check address again!');
                     }
                     shippingRateUrl = "https://telfar.net/cart/shipping_rates.json?shipping_address[zip]=".concat(checkout['shipping_address']['zip'], "&shipping_address[country]=").concat(checkout['shipping_address']['country'], "&shipping_address[province]=").concat(checkout['shipping_address']['state']);
-                    console.log(shippingRateUrl);
                     return [4 /*yield*/, client.get(shippingRateUrl, {
-                            headers: __assign(__assign({}, formData.getHeaders()), { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0', 'Cache-Control': 'no-cache' })
+                            headers: __assign(__assign({}, formDataForCheckout.getHeaders()), { 'User-Agent': 'Mozilla/5.0 (W4indows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0', 'Cache-Control': 'no-cache' })
                         })];
                 case 7:
                     shippingResponse = _a.sent();
                     console.log("Listing all the available shipping methods and its cost :");
+                    minRate_1 = Number.MAX_VALUE;
+                    minRateName_1 = '';
                     shippingResponse.data.shipping_rates.forEach(function (rate) {
                         console.log("Name: ".concat(rate.name, ", Price: ").concat(rate.price));
+                        if (rate.price < minRate_1) {
+                            minRate_1 = rate.price;
+                            minRateName_1 = rate.name;
+                        }
                     });
-                    return [3 /*break*/, 9];
+                    console.log("Minimum rate we found from the list is ".concat(minRate_1, " for ").concat(minRateName_1, ". We will be using that for submitting..."));
+                    shippingIDString = encodeURIComponent('shopify-' + minRateName_1 + '-' + minRate_1);
+                    console.log(shippingIDString);
+                    postCheckoutData = new FormData();
+                    postCheckoutData.append('_method', 'patch');
+                    postCheckoutData.append('authenticity_token', authenticityToken);
+                    postCheckoutData.append('previous_step', 'shipping_method');
+                    postCheckoutData.append('step', 'payment_method');
+                    postCheckoutData.append('checkout[shipping_rate][id]', shippingIDString);
+                    return [4 /*yield*/, client.post(newCheckoutUrl, postCheckoutData, {
+                            headers: __assign(__assign({}, postCheckoutData.getHeaders()), { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0', 'Cache-Control': 'no-cache' })
+                        })];
                 case 8:
+                    postCheckoutURL = _a.sent();
+                    if (postCheckoutURL.status === 200) {
+                        console.log("Submitting previous data, on the payment page now..");
+                        // let submitWithShippingRate=`${newCheckoutUrl}?previous_step=shipping_method&step=payment_method`
+                        // const getCheckoutURL = await client.get(submitWithShippingRate)
+                        // console.log(getCheckoutURL)
+                    }
+                    return [3 /*break*/, 10];
+                case 9:
                     //display console log if product is not in stock
                     console.log('Product is out of stock');
-                    _a.label = 9;
-                case 9: return [3 /*break*/, 11];
-                case 10:
+                    _a.label = 10;
+                case 10: return [3 /*break*/, 12];
+                case 11:
                     error_1 = _a.sent();
                     console.error(error_1);
-                    return [3 /*break*/, 11];
-                case 11: return [2 /*return*/];
+                    return [3 /*break*/, 12];
+                case 12: return [2 /*return*/];
             }
         });
     });

@@ -214,16 +214,61 @@ async function monitorProduct() {
       // Getting shipping rates based on address provided earlier
       let shippingRateUrl = `https://telfar.net/cart/shipping_rates.json?shipping_address[zip]=${checkout['shipping_address']['zip']}&shipping_address[country]=${checkout['shipping_address']['country']}&shipping_address[province]=${checkout['shipping_address']['state']}`
       const shippingResponse = await client.get(shippingRateUrl, {
-        headers: {...formData.getHeaders(),
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0',
+        headers: {...formDataForCheckout.getHeaders(),
+        'User-Agent': 'Mozilla/5.0 (W4indows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0',
         'Cache-Control': 'no-cache',
       }
       });
+      
       console.log("Listing all the available shipping methods and its cost :")
+      //additional logic from my end that we will take what is least expensive shipping option for us and using that for next step
+      let minRate = Number.MAX_VALUE;
+      let minRateName = '';
       shippingResponse.data.shipping_rates.forEach(rate => {
         console.log(`Name: ${rate.name}, Price: ${rate.price}`);
+        if(rate.price < minRate) {
+          minRate = rate.price;
+          minRateName = rate.name;
+        }
       });
+
+      console.log(`Minimum rate we found from the list is ${minRate} for ${minRateName}. We will be using that for submitting...`);
+      let shippingIDString = encodeURIComponent('shopify-'+ minRateName+'-' + minRate)
+      console.log(shippingIDString)
+      var postCheckoutData = new FormData()
+      postCheckoutData.append('_method', 'patch');
+      postCheckoutData.append('authenticity_token', authenticityToken);
+      postCheckoutData.append('previous_step', 'shipping_method');
+      postCheckoutData.append('step', 'payment_method');
+      postCheckoutData.append('checkout[shipping_rate][id]', shippingIDString);
+      // #not required but still putting it here incase we need it in future
+      // postCheckoutData.append('checkout[client_details][browser_width]', '522');
+      // postCheckoutData.append('checkout[client_details][browser_height]', '868');
+      // postCheckoutData.append('checkout[client_details][javascript_enabled]', '1');
+      // postCheckoutData.append('checkout[client_details][color_depth]', '24');
+      // postCheckoutData.append('checkout[client_details][java_enabled]', 'false');
+      // postCheckoutData.append('checkout[client_details][browser_tz]', '240');
+
+      const postCheckoutURL = await client.post(newCheckoutUrl,postCheckoutData, {
+        headers: {...postCheckoutData.getHeaders(),
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0',
+        'Cache-Control': 'no-cache',
+      }
+      }
+      )
+      if (postCheckoutURL.status===200){
+
+        console.log("Submitting previous data, on the payment page now..")
+
+        // let submitWithShippingRate=`${newCheckoutUrl}?previous_step=shipping_method&step=payment_method`
+
+        // const getCheckoutURL = await client.get(submitWithShippingRate)
+        // console.log(getCheckoutURL)
+      }
+
       
+
+
     }
      else {
       //display console log if product is not in stock
